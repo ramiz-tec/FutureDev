@@ -15,4 +15,5 @@ h1 {
 # FutureDev
 This is a portfolio showcasing my credibility to create, and produce websites, projects, and more.
 
-# FutureDev
+# Description
+In this portfolio I will show you my website building skills through the graphical interfaces and interactive features
