@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blackjack Mini Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: black;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    .bj-container {
+      width: 100%;
+      max-width: 700px;
+      padding: 20px;
+      border: 2px solid purple;
+      border-radius: 12px;
+      background: rgba(0,0,0,0.6);
+      box-shadow: 0 0 15px rgba(128,0,128,0.8);
+    }
+    h1, h2, p { text-align: center; }
+    .table {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .player-box, .dealer-box {
+      border: 1px solid purple;
+      padding: 12px;
+      border-radius: 10px;
+      min-height: 120px;
+    }
+    .cards {
+      min-height: 36px;
+      color: #f8f4ff;
+    }
+    .score {
+      font-size: 1.2rem;
+      margin-top: 8px;
+    }
+    .controls {
+      text-align: center;
+      margin-top: 15px;
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+    button {
+      padding: 10px 18px;
+      font-size: 1rem;
+      color: white;
+      background: transparent;
+      border: 2px solid purple;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    button:hover { background: purple; }
+    button:disabled { opacity: .4; cursor: not-allowed; }
+    .message {
+      text-align: center;
+      font-size: 1.2rem;
+      margin-top: 14px;
+      min-height: 30px;
+    }
+    .winner { color: #4caf50; }
+    .loser { color: #ff6b6b; }
+    .tie { color: #f5cb42; }
+    @media (max-width: 650px) {
+      .table { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bj-container">
+    <h1>Blackjack Mini Game</h1>
+    <div class="table">
+      <div class="dealer-box">
+        <h2>Dealer</h2>
+        <div id="dealerCards" class="cards"></div>
+        <div id="dealerScore" class="score"></div>
+      </div>
+      <div class="player-box">
+        <h2>Player</h2>
+        <div id="playerCards" class="cards"></div>
+        <div id="playerScore" class="score"></div>
+      </div>
+    </div>
+    <div class="controls">
+      <button id="dealBtn">Deal</button>
+      <button id="hitBtn" disabled>Hit</button>
+      <button id="standBtn" disabled>Stand</button>
+    </div>
+    <div id="message" class="message"></div>
+  </div>
+
+  <script>
+    const dealBtn = document.getElementById('dealBtn');
+    const hitBtn = document.getElementById('hitBtn');
+    const standBtn = document.getElementById('standBtn');
+    const dealerCardsEl = document.getElementById('dealerCards');
+    const playerCardsEl = document.getElementById('playerCards');
+    const dealerScoreEl = document.getElementById('dealerScore');
+    const playerScoreEl = document.getElementById('playerScore');
+    const messageEl = document.getElementById('message');
+
+    let deck = [];
+    let playerHand = [];
+    let dealerHand = [];
+    let inProgress = false;
+
+    const suits = ['♠', '♥', '♦', '♣'];
+    const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+    function createDeck() {
+      const newDeck = [];
+      for (const suit of suits) {
+        for (const rank of ranks) {
+          newDeck.push({ rank, suit, value: getCardValue(rank) });
+        }
+      }
+      return newDeck;
+    }
+
+    function getCardValue(rank) {
+      if (rank === 'A') return 11;
+      if (['K', 'Q', 'J'].includes(rank)) return 10;
+      return parseInt(rank, 10);
+    }
+
+    function shuffle(deck) {
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+    }
+
+    function calculateScore(hand) {
+      let total = hand.reduce((sum, c) => sum + c.value, 0);
+      let aces = hand.filter(c => c.rank === 'A').length;
+      while (total > 21 && aces > 0) {
+        total -= 10;
+        aces -= 1;
+      }
+      return total;
+    }
+
+    function renderHands(revealDealer = false) {
+      dealerCardsEl.textContent = revealDealer ? dealerHand.map(c => cardText(c)).join(' ') : `?? ${cardText(dealerHand[1])}`;
+      playerCardsEl.textContent = playerHand.map(cardText).join(' ');
+      const dealerScore = revealDealer ? calculateScore(dealerHand) : calculateScore([dealerHand[1]]);
+      dealerScoreEl.textContent = revealDealer ? `Score: ${dealerScore}` : 'Score: ?';
+      playerScoreEl.textContent = `Score: ${calculateScore(playerHand)}`;
+    }
+
+    function cardText(card) {
+      return `${card.rank}${card.suit}`;
+    }
+
+    function endGame() {
+      inProgress = false;
+      hitBtn.disabled = true;
+      standBtn.disabled = true;
+      dealBtn.disabled = false;
+    }
+
+    function finalizeFn() {
+      const playerScore = calculateScore(playerHand);
+      let dealerScore = calculateScore(dealerHand);
+      // Slightly reduce dealer win chance by making dealer stand on soft 17
+      while (dealerScore < 18) {
+        dealerHand.push(deck.pop());
+        dealerScore = calculateScore(dealerHand);
+      }
+      renderHands(true);
+
+      if (playerScore > 21) {
+        messageEl.textContent = 'Busted! Dealer wins.';
+        messageEl.className = 'message loser';
+      } else if (dealerScore > 21) {
+        messageEl.textContent = 'Dealer busts! You win!';
+        messageEl.className = 'message winner';
+      } else if (playerScore > dealerScore) {
+        messageEl.textContent = 'You win!';
+        messageEl.className = 'message winner';
+      } else if (playerScore < dealerScore) {
+        messageEl.textContent = 'Dealer wins.';
+        messageEl.className = 'message loser';
+      } else {
+        messageEl.textContent = 'Push (tie).';
+        messageEl.className = 'message tie';
+      }
+      endGame();
+    }
+
+    function dealGame() {
+      deck = createDeck();
+      shuffle(deck);
+      playerHand = [deck.pop(), deck.pop()];
+      dealerHand = [deck.pop(), deck.pop()];
+      inProgress = true;
+      messageEl.textContent = '';
+      messageEl.className = 'message';
+      renderHands();
+
+      hitBtn.disabled = false;
+      standBtn.disabled = false;
+      dealBtn.disabled = true;
+
+      const playerScore = calculateScore(playerHand);
+      if (playerScore === 21) {
+        finalizeFn();
+      }
+    }
+
+    function hitGame() {
+      if (!inProgress) return;
+      playerHand.push(deck.pop());
+      renderHands();
+      const playerScore = calculateScore(playerHand);
+      if (playerScore > 21) {
+        messageEl.textContent = 'Busted! Dealer wins.';
+        messageEl.className = 'message loser';
+        finalizeFn();
+      }
+    }
+
+    function standGame() {
+      if (!inProgress) return;
+      finalizeFn();
+    }
+
+    dealBtn.addEventListener('click', dealGame);
+    hitBtn.addEventListener('click', hitGame);
+    standBtn.addEventListener('click', standGame);
+
+    // Initialize for first load state
+    renderHands();
+  </script>
+</body>
+</html>
