@@ -135,6 +135,17 @@
             margin: 20px 0;
             font-family: monospace;
             -webkit-text-stroke: 1px purple;
+            white-space: nowrap;
+        }
+        .word-hint {
+            font-size: 18px;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+            color: white;
+            -webkit-text-stroke: 0px transparent;
+            margin-top: 8px;
+            display: block;
+            opacity: 0.95;
         }
         .guesses-info {
             color: #ccc;
@@ -173,8 +184,8 @@
         }
         .game-over {
             text-align: center;
-            padding: 20px;
-            margin: 20px 0;
+            padding: 10px;
+            margin: 10px 0;
             border: 2px solid purple;
             display: none;
         }
@@ -211,6 +222,23 @@
         .reset-btn:hover {
             background: purple;
         }
+        .hint-btn {
+            background: transparent;
+            border: 2px solid purple;
+            color: white;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        .hint-btn:hover:not(:disabled) {
+            background: purple;
+        }
+        .hint-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -226,12 +254,15 @@
             </div>
             <div class="game-info">
                 <div class="word-display" id="wordDisplay"></div>
+            <div class="word-hint" id="wordHint"></div>
                 <div class="guesses-info">Guesses remaining: <span id="guessesRemaining">6</span></div>
                 <div class="wrong-letters">Wrong guesses: <span id="wrongLetters"></span></div>
             </div>
         </div>
         
         <div class="letter-buttons" id="letterButtons"></div>
+        
+        <button class="hint-btn" onclick="giveHint()">Hint</button>
         
         <div class="game-over" id="gameOver">
             <h2 id="gameOverMessage"></h2>
@@ -242,24 +273,41 @@
 
     <script>
         const words = [
-            'JAVASCRIPT', 'HANGMAN', 'PROGRAMMING', 'COMPUTER', 'WEBSITE',
-            'DEVELOPER', 'CODE', 'FUNCTION', 'DATABASE', 'ALGORITHM',
-            'VARIABLE', 'BROWSER', 'NETWORK', 'SERVER', 'CLIENT'
+            { word: 'JAVASCRIPT', hint: 'A programming language used for web development' },
+            { word: 'HANGMAN', hint: 'A word-guessing game' },
+            { word: 'PROGRAMMING', hint: 'The process of writing computer code' },
+            { word: 'COMPUTER', hint: 'An electronic device that processes data' },
+            { word: 'WEBSITE', hint: 'A collection of web pages on the internet' },
+            { word: 'DEVELOPER', hint: 'A person who creates software' },
+            { word: 'CODE', hint: 'Instructions written in a programming language' },
+            { word: 'FUNCTION', hint: 'A block of code that performs a specific task' },
+            { word: 'DATABASE', hint: 'A structured set of data' },
+            { word: 'ALGORITHM', hint: 'A set of rules to solve a problem' },
+            { word: 'VARIABLE', hint: 'A storage location with a name' },
+            { word: 'BROWSER', hint: 'Software to access the internet' },
+            { word: 'NETWORK', hint: 'A group of interconnected computers' },
+            { word: 'SERVER', hint: 'A computer that provides services to other computers' },
+            { word: 'CLIENT', hint: 'A computer that requests services from a server' }
         ];
 
         let word = '';
+        let currentHint = '';
         let guessedLetters = [];
         let wrongGuesses = [];
         let gameOver = false;
         let won = false;
+        let hintUsed = false;
         const maxWrongGuesses = 6;
 
         function initGame() {
-            word = words[Math.floor(Math.random() * words.length)];
+            const wordObj = words[Math.floor(Math.random() * words.length)];
+            word = wordObj.word;
+            currentHint = wordObj.hint;
             guessedLetters = [];
             wrongGuesses = [];
             gameOver = false;
             won = false;
+            hintUsed = false;
 
             // Reset hangman figure
             document.querySelectorAll('.head, .body, .left-arm, .right-arm, .left-leg, .right-leg')
@@ -267,6 +315,12 @@
 
             // Reset game over display
             document.getElementById('gameOver').classList.remove('show', 'win', 'lose');
+
+            // Reset hint text
+            document.getElementById('wordHint').textContent = '';
+
+            // Enable hint button
+            document.querySelector('.hint-btn').disabled = false;
 
             // Create letter buttons
             createLetterButtons();
@@ -281,6 +335,7 @@
                 const btn = document.createElement('button');
                 btn.textContent = letter;
                 btn.className = 'letter-btn';
+                btn.setAttribute('data-letter', letter);
                 btn.onclick = () => guessLetter(letter, btn);
                 container.appendChild(btn);
             }
@@ -320,13 +375,27 @@
         }
 
         function updateDisplay() {
-            const display = word.split('').map(letter => 
+            const letters = word.split('').map(letter => 
                 guessedLetters.includes(letter) ? letter : '_'
             ).join(' ');
 
-            document.getElementById('wordDisplay').textContent = display;
+            let html = `<span class="word-letters">${letters}</span>`;
+            if (hintUsed) {
+                html += `<span class="word-hint">Hint: ${currentHint}</span>`;
+            }
+
+            document.getElementById('wordDisplay').innerHTML = html;
             document.getElementById('guessesRemaining').textContent = maxWrongGuesses - wrongGuesses.length;
             document.getElementById('wrongLetters').textContent = wrongGuesses.join(', ') || 'None';
+        }
+
+        function giveHint() {
+            if (hintUsed || gameOver) return;
+
+            hintUsed = true;
+            document.querySelector('.hint-btn').disabled = true;
+            document.getElementById('wordHint').textContent = 'Hint: ' + currentHint;
+            updateDisplay();
         }
 
         function endGame(won) {
