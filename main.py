@@ -16,9 +16,9 @@ class CustomHandler(SimpleHTTPRequestHandler):
         parsed_path = urlparse(self.path)
         path = parsed_path.path
 
-        # Default to README.md if root is requested
+        # Default to index.html if root is requested
         if path == '/':
-            path = '/README.md'
+            path = '/index.html'
 
         # Check if the file exists
         file_path = os.path.join(os.getcwd(), path.lstrip('/'))
